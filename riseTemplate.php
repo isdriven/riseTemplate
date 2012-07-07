@@ -5,6 +5,29 @@
  *   version 0.1
  **/
 class riseTemplateLibrary{
+    protected $set_vals = array();
+    public $core = null;
+    public function setCore( $core ){
+        $this->core = $core;
+    }
+    public function set( $args ){
+        $len = sizeof( $args );
+        if( $len < 2 ){
+            return "";
+        }
+        $n = 0;
+        while( isset( $args[$n+1] ) ){
+            $this->set_vals[ $args[$n] ] = $args[$n+1];
+            $n+=2;
+        }
+        return "";
+    }
+    public function replaceSets( $contents ){
+        foreach( $this->set_vals as $k=>$v ){
+            $contents = str_replace( '*'.$k.'*' , $v , $contents );
+        }
+        return $contents;
+    }
     public function tag( $tag , $args , $double = true , $has_br = false ){
         if( !isset( $args[0] ) ){
             $args[0] = "";
@@ -66,12 +89,52 @@ class riseTemplateLibrary{
             $args[0]
         );        
     }
+    public function br(){
+        return "<br />";
+    }
+    public function merge( $args ){
+        return $this->core->execRaw( $args[0] );
+    }
+    public function extend( $args ){
+        $file_name = $args[0];
+        $res = $this->core->execRaw( $file_name );
+        if( $res === false ){
+            return null;
+        }
+        
+        $this->blocks = array();
+        $len = sizeof( $args );
+        if( $len > 2 ){
+        }
+        $n = 1;
+        while( isset( $args[$n+1] ) ){
+            $this->blocks[ $args[$n] ] = $args[$n+1];
+            $n+=2;
+        }
+
+        $this->core->extend_mode = true;
+        $res = $this->core->execLib( $res );
+        $this->core->extend_mode = false;
+        
+        return $res;
+    }
+    public function block( $args ){
+        if( $this->core->extend_mode ){
+            $name = $args[0];
+            if( isset( $this->blocks[$name] ) ){
+                return $this->core->execLib( $this->blocks[$name] );
+            }
+        }else{
+            return null;
+        }
+    }
 }
 
 class riseTemplate
 {
     private $dir, $lib = array();
-    public $set, $buffer,$result ;
+    public $set, $buffer = array() ,$result;
+    public $extend_mode = false;
     public $args_separator = ',;';
     public function __construct(){
         $this->dir = dirname(__FILE__);
@@ -79,15 +142,20 @@ class riseTemplate
     }
     public function setLibrary( $lib ){
         $this->lib = $lib;
+        $this->lib->setCore( $this );
     }
     public function render( $file_name ){
-        $this->buffer = $this->execRaw( $file_name );
-        $this->result = $this->execLib( $this->buffer );
+        $buffer = $this->execRaw( $file_name );
+        $this->buffer[] = $buffer;
+        $res = $this->execLib( $buffer );
+        $this->result = $res;
+        return $res;
     }
     public function execRaw( $file_name ){
         if( !file_exists($file_name )){
             return false;
         }
+
         $set = $this->set;
         $time = filemtime( $file_name );
         ob_start();
@@ -96,13 +164,20 @@ class riseTemplate
         return $buffer;
     }
     public function execLib( $buffer ){
-        $this->_buffer = $buffer;
-        while( $this->useLib() == true ){
-        }
-        return $this->_buffer;
+        do{
+            $res = $buffer;
+            $loop = true;
+            $res = $this->useLib($res);
+            if( $res !== false ){
+                $buffer = $res;
+            }else{
+                $loop = false;
+            }
+        }while( $loop );
+
+        return $buffer;
     }
-    public function useLib(){
-        $buffer = $this->_buffer;
+    public function useLib($buffer){
         $lib_size = sizeof( $this->lib );
         $pattern = "/[ ]*\!([^\{]*)\{([^\{\}]*)\}/";
         preg_match( $pattern , $buffer , $res );
@@ -117,7 +192,7 @@ class riseTemplate
 
         $rev = array();
         foreach( $tag_args as $v ){
-            $rev[] = trim( $v );
+            $rev[] = $this->lib->replaceSets( trim( $v ) );
         }
         $tag_args = $rev;
 
@@ -128,11 +203,6 @@ class riseTemplate
         }
         
         $buffer_ = str_replace( $body , $rep , $buffer );
-
-        $this->_buffer = $buffer_;
-        return true;
-    }
-    public function res(){
-        return $this->result;
+        return $buffer_;
     }
 }

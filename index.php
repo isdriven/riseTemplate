@@ -10,6 +10,5 @@ $rise->setLibrary( $lib );
 
 $rise->set->number = 100;
 
-$rise->render( "template.php" );
+echo $rise->render( "template0.php" );
 
-echo $rise->res();
