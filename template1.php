@@ -20,7 +20,8 @@
     !h4{style="*left20*",;support}
     !h4{style="*left30*",;constant value}
     !h4{style="*left30*",;merge}
-    !h4{style="*left30*",;extend}
+    !h4{style="*left30*",;/*>*/extend\!,;
+    }
     !h4{style="*left30*",;
         /*<escape>*/
     }

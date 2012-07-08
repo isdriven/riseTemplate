@@ -92,6 +92,12 @@ class riseTemplateLibrary{
     public function br(){
         return "<br />";
     }
+    public function hr(){
+        return "<hr />";
+    }
+    public function img( $args ){
+        return sprintf( '<img src="%s" %s />', $args[0] , $args[1] );
+    }
     public function merge( $args ){
         return $this->core->execRaw( $args[0] );
     }
@@ -139,6 +145,13 @@ class riseTemplate
     public $set, $buffer = array() ,$result;
     public $extend_mode = false;
     public $args_separator = ',;';
+    public $convert_strings = 
+        array(
+            '\!'=>'___EXCLAMATION___',
+            '\{'=>'___START_TAG___',
+            '\}'=>'___END_TAG___',
+        );
+
     public function __construct(){
         $this->dir = dirname(__FILE__);
         $this->set = new stdClass;
@@ -166,7 +179,11 @@ class riseTemplate
         $buffer = ob_get_clean();
         return $buffer;
     }
+
     public function execLib( $buffer ){
+
+        $buffer = $this->convertEscapes( $buffer );
+
         do{
             $res = $buffer;
             $loop = true;
@@ -178,8 +195,25 @@ class riseTemplate
             }
         }while( $loop );
 
+        $buffer = $this->revertEscapes( $buffer );
+
         return $buffer;
     }
+
+    public function convertEscapes( $contents ){
+        foreach( $this->convert_strings as $k=>$v ){
+            $contents = str_replace( $k, $v , $contents );
+        }
+        return $contents;
+    }
+
+    public function revertEscapes( $contents ){
+        foreach( $this->convert_strings as $k=>$v ){
+            $contents = str_replace( $v, str_replace('\\','',$k) , $contents );
+        }
+        return $contents;
+    }
+
     public function useLib($buffer){
         $lib_size = sizeof( $this->lib );
         $pattern = "/[ ]*\!([^-\{]*)\{([^\{\}]*)\}/";
@@ -195,7 +229,7 @@ class riseTemplate
 
         $rev = array();
         foreach( $tag_args as $v ){
-            $rev[] = $this->escape( $this->lib->replaceSets( trim( $v ) ));
+            $rev[] = $this->escape( $this->lib->replaceSets( trim( $v ) ) );
         }
         $tag_args = $rev;
 
@@ -222,7 +256,7 @@ class riseTemplate
         return $contents;
     }
     public function _esc( $contents ){
-        $pattern = "/.*\/\*(.*?)\*\/.*/";
+        $pattern = "/\/\*(.*?)\*\//";
         preg_match( $pattern , $contents , $res );
         if( empty( $res ) ){
             return false;
