@@ -2,7 +2,7 @@
 /**********
  * riseTemplate 
  *   template engine of PHP
- *   version 0.1
+ *   version 0.2
  **/
 class riseTemplateLibrary{
     protected $set_vals = array();
@@ -128,6 +128,9 @@ class riseTemplateLibrary{
             return null;
         }
     }
+    public function comment( $args ){
+        return sprintf("<!-- %s -->", implode( "\r\n" , $args ));
+    }
 }
 
 class riseTemplate
@@ -179,7 +182,7 @@ class riseTemplate
     }
     public function useLib($buffer){
         $lib_size = sizeof( $this->lib );
-        $pattern = "/[ ]*\!([^\{]*)\{([^\{\}]*)\}/";
+        $pattern = "/[ ]*\!([^-\{]*)\{([^\{\}]*)\}/";
         preg_match( $pattern , $buffer , $res );
         
         if( sizeof( $res ) == 0 ){
@@ -192,7 +195,7 @@ class riseTemplate
 
         $rev = array();
         foreach( $tag_args as $v ){
-            $rev[] = $this->lib->replaceSets( trim( $v ) );
+            $rev[] = $this->escape( $this->lib->replaceSets( trim( $v ) ));
         }
         $tag_args = $rev;
 
@@ -204,5 +207,38 @@ class riseTemplate
         
         $buffer_ = str_replace( $body , $rep , $buffer );
         return $buffer_;
+    }
+
+    public function escape( $contents ){
+        do{ 
+            $loop = true;
+            $ret = $this->_esc( $contents );
+            if( $ret == false ){
+                $loop = false;
+            }else{
+                $contents = $ret;
+            }
+        }while( $loop );
+        return $contents;
+    }
+    public function _esc( $contents ){
+        $pattern = "/.*\/\*(.*?)\*\/.*/";
+        preg_match( $pattern , $contents , $res );
+        if( empty( $res ) ){
+            return false;
+        }
+        $contents = str_replace( $res[0] , $this->quoteEntity( $res[1] ) , $contents );
+
+        return $contents;
+    }
+    public function quoteEntity( $c ){
+        $c = str_replace('&' , '&amp;' , $c );
+        $c = str_replace('<' , '&lt;' , $c );
+        $c = str_replace('>' , '&gt;' , $c );
+        $c = str_replace(' ' , '&nbsp;' , $c );
+        $c = str_replace('"' , '&quot;' , $c );
+        $c = str_replace('`' , '&acute;' , $c );
+        $c = str_replace("'" , '&lsquo;' , $c );
+        return $c;
     }
 }

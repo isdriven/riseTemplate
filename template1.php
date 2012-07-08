@@ -21,6 +21,14 @@
     !h4{style="*left30*",;constant value}
     !h4{style="*left30*",;merge}
     !h4{style="*left30*",;extend}
+    !h4{style="*left30*",;
+        /*<escape>*/
+    }
+    !comment{
+        ,;
+        この部分はコメント,;
+        何行書いてもOK,;
+    }
     !div{style="height:30px;",;
         <?php
         for( $i = 0 ; $i < 20 ; ++$i ){
